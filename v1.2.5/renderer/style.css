@@ -1,0 +1,1049 @@
+:root[data-theme="dark"] {
+  --bg: #06070a;
+  --bg-elev: #0d1016;
+  --bg-elev-2: #12161e;
+  --bg-elev-3: #171c26;
+  --border: #1e2430;
+  --text: #eef5fb;
+  --text-dim: #93a5b8;
+  --text-faint: #5c6d80;
+  --accent: #17e0e8;
+  --accent-2: #0aa8c9;
+  --accent-soft: rgba(23, 224, 232, 0.11);
+  --accent-border: rgba(23, 224, 232, 0.32);
+  --success: #3ddc84;
+  --success-soft: rgba(61, 220, 132, 0.12);
+  --danger: #ff5470;
+  --warn: #f5b74b;
+  --warn-soft: rgba(245, 183, 75, 0.12);
+  --shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="light"] {
+  --bg: #f5fafb;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #eef8f9;
+  --bg-elev-3: #e2f1f2;
+  --border: #d9e8eb;
+  --text: #0b1216;
+  --text-dim: #526069;
+  --text-faint: #8298a0;
+  --accent: #0aa8c9;
+  --accent-2: #0091ab;
+  --accent-soft: rgba(10, 168, 201, 0.09);
+  --accent-border: rgba(10, 168, 201, 0.28);
+  --success: #14a568;
+  --success-soft: rgba(20, 165, 104, 0.12);
+  --danger: #d6304b;
+  --warn: #b8781a;
+  --warn-soft: rgba(184, 120, 26, 0.12);
+  --shadow: 0 14px 32px rgba(10, 40, 50, 0.1);
+  --shadow-sm: 0 4px 14px rgba(10, 40, 50, 0.07);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: "Inter", "Segoe UI", -apple-system, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select { font-family: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Scrollbars: finos y del mismo mundo visual que el resto de la app. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-elev-3); border-radius: 20px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--border); background-clip: padding-box; }
+
+/* ---------- Iconos ---------- */
+.icon-svg { width: 17px; height: 17px; display: block; flex-shrink: 0; }
+
+/* ---------- App shell ---------- */
+.app {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+}
+
+/* El juego real vive siempre cargado detrás de todo (para poder leer la
+   lista de salas en vivo), pero el sidebar + main de arriba lo tapan por
+   completo con fondo opaco mientras no estás jugando. */
+.game-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #000;
+}
+#game-view { width: 100%; height: 100%; display: inline-flex; }
+
+.fps-badge, .overlay-btn, .room-name-badge {
+  display: none;
+  position: absolute;
+  z-index: 2;
+}
+.app.playing .fps-badge, .app.playing .overlay-btn { display: inline-flex; }
+.app.playing .room-name-badge:not(:empty) { display: inline-flex; }
+
+/* Sin backdrop-filter a propósito: estos elementos flotan sobre el canvas
+   del juego, que se repinta cada cuadro, y el blur se recalculaba en cada uno. */
+/* MOVIDO (26/09) - antes arriba a la derecha, chocaba visualmente con el
+   propio HUD de Haxball (ping/menú) que vive en esa esquina durante la
+   partida. Ahora abajo a la derecha, lejos de cualquier HUD del juego. */
+.fps-badge {
+  bottom: 16px;
+  right: 16px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.78);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+}
+
+/* MOVIDO (26/09) - antes arriba al centro, ahora justo arriba del
+   contador de FPS (mismo rincón, abajo a la derecha) para tener los dos
+   juntos de un vistazo mientras jugás. */
+.room-name-badge {
+  bottom: 50px;
+  right: 16px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.78);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+  max-width: 40vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.overlay-btn {
+  top: 14px;
+  left: 16px;
+  align-items: center;
+  gap: 7px;
+  background: rgba(6, 7, 10, 0.88);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, transform .12s;
+}
+.overlay-btn:hover { border-color: var(--accent); color: var(--accent); }
+.overlay-btn:active { transform: scale(0.97); }
+
+/* ---------------------------------------------------------------------
+   Overlay de "entrando a la sala" - tapa el webview mientras Haxball
+   todavía está en su propio proceso de conexión (lo que antes se veía
+   como un parpadeo negro / la pantalla nativa de "connecting"). Vive
+   siempre montado, arriba de #game-view, y se muestra/oculta con
+   opacity+display desde app.js (showJoinOverlay/hideJoinOverlay).
+   --------------------------------------------------------------------- */
+.join-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--bg-elev);
+  opacity: 0;
+  transition: opacity .18s ease;
+  pointer-events: none;
+}
+.join-overlay.visible { display: flex; }
+.join-overlay.show { opacity: 1; }
+.join-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-border);
+  border-top-color: var(--accent);
+  animation: join-spin .8s linear infinite;
+}
+.join-overlay-text {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+@keyframes join-spin {
+  to { transform: rotate(360deg); }
+}
+
+.app.playing .sidebar,
+.app.playing .main {
+  display: none;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  position: relative;
+  z-index: 1;
+  width: 236px;
+  flex-shrink: 0;
+  background: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 18px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.brand-logo { width: 32px; height: 32px; border-radius: 7px; }
+.brand-name { font-size: 15px; font-weight: 700; letter-spacing: 0.1px; }
+.brand-name b { color: var(--accent); font-weight: 800; }
+
+.nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.nav-btn:hover { background: var(--accent-soft); color: var(--text); }
+.nav-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-btn .icon { width: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.sidebar-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.theme-btn { width: 100%; justify-content: center; display: flex; gap: 8px; }
+.update-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+}
+.update-banner span {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.update-download-btn { width: 100%; justify-content: center; }
+.app-version {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  letter-spacing: 0.2px;
+  margin-top: 4px;
+}
+
+/* ---------- Main / paneles ---------- */
+.main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.panel { display: none; animation: panel-in .18s ease; }
+.panel.active { display: block; }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-header { padding: 28px 32px 4px; }
+.panel-header h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
+
+.hint { color: var(--text-dim); font-size: 12.5px; margin: 0; line-height: 1.55; }
+
+.tag-experimental {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border: 1px solid rgba(245, 183, 75, 0.35);
+  border-radius: 20px;
+  padding: 2px 8px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.card {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin: 16px 32px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color .15s;
+}
+.card h3 { margin: 0 0 8px 0; font-size: 14.5px; font-weight: 700; }
+.card p { margin: 0 0 12px 0; color: var(--text-dim); font-size: 12.5px; line-height: 1.6; }
+.card p:last-child { margin-bottom: 0; }
+
+.panel-toolbar { display: flex; gap: 8px; padding: 0 32px; margin-bottom: 16px; }
+
+button { cursor: pointer; font-weight: 500; }
+
+.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #04141a;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 13.5px;
+  white-space: nowrap;
+  transition: filter .15s, transform .1s;
+}
+.primary-btn:hover { filter: brightness(1.08); }
+.primary-btn:active { transform: scale(0.98); }
+.primary-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  transition: border-color .15s, color .15s;
+}
+.ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
+.ghost-btn.icon-only { padding: 9px 11px; }
+.ghost-btn.secondary-action { padding: 8px 11px; font-size: 12px; }
+
+.code-box {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0 32px 24px;
+  font-size: 12px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 220px;
+  overflow: auto;
+  color: var(--text-dim);
+}
+
+.discord-btn { background: linear-gradient(135deg, #5865F2, #3843c4); color: #fff; }
+.row-buttons { display: flex; gap: 8px; margin-bottom: 8px; }
+.status { font-size: 12px; color: var(--text-dim); }
+.status.ok { color: var(--success); }
+.status.err { color: var(--danger); }
+.fps-limit-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.fps-limit-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  outline: none;
+}
+.fps-limit-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-elev);
+  box-shadow: 0 0 0 2px var(--accent-border);
+  cursor: pointer;
+}
+.fps-limit-row input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-elev);
+  box-shadow: 0 0 0 2px var(--accent-border);
+  cursor: pointer;
+}
+.fps-limit-value {
+  min-width: 66px;
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.switch-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; gap: 16px; }
+
+/* Checkboxes como switches prolijos (nada de checkbox nativo cuadrado). */
+.switch-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 20px;
+  background: var(--bg-elev-3);
+  border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s, border-color .15s;
+}
+.switch-row input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: transform .15s, background .15s;
+}
+.switch-row input[type="checkbox"]:checked {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+.switch-row input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+  background: var(--accent);
+}
+
+/* ---------- Explorar salas ---------- */
+.hero { padding: 32px 32px 20px; }
+.hero-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.hero-title {
+  margin: 0 0 8px;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  line-height: 1.15;
+}
+.accent-text {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-sub { margin: 0 0 20px; color: var(--text-dim); font-size: 13.5px; max-width: 60ch; }
+
+.toolbar { display: flex; gap: 10px; margin-bottom: 14px; }
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 14px;
+  transition: border-color .15s;
+}
+.search-box:focus-within { border-color: var(--accent); }
+.search-icon-svg { color: var(--text-faint); }
+.search-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 11px 0;
+  font-size: 13.5px;
+  outline: none;
+}
+.sort-select {
+  /* Layout y Dimensiones */
+  appearance: none; /* Elimina la flecha nativa inconsistente entre navegadores */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 36px 0 14px; /* Espacio a la derecha para la nueva flecha personalizada */
+
+  /* Tipografía */
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+
+  /* Fondo y Bordes */
+  background-color: var(--bg-elev-2);
+  /* SVG inline codificado para mostrar una flecha personalizada elegante */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  /* Interacción y Transiciones */
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+/* Estado Hover (Al pasar el ratón) */
+.sort-select:hover {
+  border-color: var(--border-hover, var(--text-muted, #888));
+  background-color: var(--bg-elev-3, var(--bg-elev-2));
+}
+
+/* Estado Focus (Al seleccionar con teclado o clic) */
+.sort-select:focus {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 3px var(--primary-alpha, rgba(59, 130, 246, 0.2));
+}
+
+/* Estilo para las opciones desplegadas (dentro del menú) */
+.sort-select option {
+  background-color: var(--bg-elev-2);
+  color: var(--text);
+}
+.toolbar .ghost-btn { padding: 0 14px; }
+
+.hero-stats { color: var(--text-dim); font-size: 12.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hero-stats span#stat-players { color: var(--accent); font-weight: 700; }
+.last-updated { color: var(--text-faint); font-size: 11px; }
+.last-updated::before { content: '·'; margin-right: 10px; }
+.last-updated:empty::before { content: ''; margin: 0; }
+
+/* ---------- Lista de salas ---------- */
+.room-list { padding: 4px 32px 32px; display: flex; flex-direction: column; }
+
+.room-list-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* Skeleton de carga: fila "fantasma" con shimmer, en vez de solo texto. */
+.room-list-skeleton { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+.skeleton-row {
+  height: 60px;
+  border-radius: 12px;
+  background: linear-gradient(100deg, var(--bg-elev-2) 30%, var(--bg-elev-3) 50%, var(--bg-elev-2) 70%);
+  background-size: 220% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+
+.room-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--border);
+  animation: row-in .16s ease;
+}
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.room-card:hover { background: var(--accent-soft); margin: 0 -12px; padding-left: 16px; padding-right: 16px; border-radius: 10px; }
+
+.room-flag {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: var(--text-dim);
+}
+
+.room-main { flex: 1; min-width: 0; }
+.room-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-meta { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.chip {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-elev-2);
+  border-radius: 20px;
+  padding: 2px 9px;
+}
+.chip-lock { color: var(--accent); }
+
+.room-pill { font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; flex-shrink: 0; display: flex; align-items: center; gap: 5px; }
+.room-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+.room-pill-live { color: var(--success); }
+.room-pill-live::before { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+.room-pill-offline { color: var(--text-faint); }
+.room-pill-offline::before { background: var(--text-faint); }
+.room-pill-direct { color: var(--accent); }
+.room-pill-direct::before { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.room-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* Sala anclada: el único elemento "destacado" de la lista — todo lo demás
+   se mantiene chato y en fila para no repetir la misma tarjeta con sombra
+   en cada renglón. */
+.room-card-pinned {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+.room-card-pinned:hover { margin: 0 0 10px; }
+.room-card-offline { border-color: var(--border); opacity: 0.75; }
+.room-card-direct {
+  background: var(--accent-soft);
+  border: 1px dashed var(--accent-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.room-card-direct:hover { margin: 0 0 10px; background: var(--accent-soft); }
+
+.badge-pinned {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  padding: 1px 8px;
+  vertical-align: middle;
+}
+
+/* ---------- Form de crear sala ---------- */
+.create-room-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.form-field input {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .15s;
+}
+.form-field input:focus { border-color: var(--accent); }
+
+/* ---------- Form de salas fijadas ---------- */
+.pin-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.pin-form input {
+  flex: 1;
+  min-width: 160px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color .15s;
+}
+.pin-form input:focus { border-color: var(--accent); }
+.pin-remove-btn {
+  padding: 6px 9px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ---------- Auth cards (Mi cuenta) ---------- */
+.auth-guesses { display: flex; flex-direction: column; gap: 10px; }
+
+.auth-box {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.auth-box h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.auth-box h3 span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-border);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.auth-box p {
+  margin: 0 0 14px 0;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  word-break: break-all;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.auth-copy-item {
+  border: 1px solid var(--accent-border);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s, transform .12s;
+}
+.auth-copy-item:hover { background: var(--accent-border); }
+.auth-copy-item:active { transform: scale(0.97); }
+.auth-card h3 { word-break: break-all; }
+.auth-card .code-box { max-height: 80px; }
+
+
+/* ---------- Notificaciones (toasts) ---------- */
+.toast-container {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  background: var(--bg-elev-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.toast-ok { border-color: var(--accent-border); }
+
+/* ---------- Replays ---------- */
+.replay-list { display: flex; flex-direction: column; gap: 8px; margin: 0 32px 24px; }
+.replay-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 14px; cursor: pointer; text-align: left; color: var(--text);
+  font: inherit; transition: border-color .15s, background-color .15s;
+}
+.replay-item:hover { border-color: var(--accent-border); background: var(--accent-soft); }
+.replay-item-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.replay-item-meta { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+
+/* Modo replay: el juego queda a la vista igual que al jugar, pero con su
+   propio botón de salida y sin "copiar link de la sala". */
+.app:not(.replay-mode) #exit-replay-btn { display: none !important; }
+.app.replay-mode #copy-link-btn { display: none !important; }
+.app:not(.creating) #exit-create-btn { display: none !important; }
+.app.creating #copy-link-btn { display: none !important; }
+.create-hint { display: none; position: absolute; z-index: 5; top: 14px; left: 50%; transform: translateX(-50%);
+  background: rgba(6,7,10,.88); color: var(--text); border: 1px solid var(--accent-border);
+  padding: 8px 16px; border-radius: 20px; font-size: 12.5px; font-weight: 600; pointer-events: none; white-space: nowrap; }
+.app.creating .create-hint { display: block; }
+#exit-create-btn { z-index: 6; }
+
+
+/* ---------------------------------------------------------------------
+   Fondo del cliente (Apariencia) - colores de club + estadio.
+   Las variables --fx-* las escribe appearance.js. Todo va con alfa bajo
+   para que se sienta parte del tema y no un fondo pegado encima.
+   --------------------------------------------------------------------- */
+:root {
+  --fx-c1: rgba(23, 224, 232, 0.10);
+  --fx-c2: rgba(10, 168, 201, 0.08);
+  --fx-side: rgba(23, 224, 232, 0.05);
+  --fx-edge: rgba(23, 224, 232, 0.18);
+  --fx-line: rgba(255, 255, 255, 0.05);
+}
+:root[data-theme="light"] { --fx-line: rgba(10, 40, 50, 0.06); }
+
+.main {
+  background:
+    var(--fx-stadium, linear-gradient(transparent, transparent)),
+    radial-gradient(1100px 520px at 100% -8%, var(--fx-c1), transparent 70%),
+    radial-gradient(900px 480px at -8% 108%, var(--fx-c2), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+.sidebar {
+  background:
+    linear-gradient(180deg, var(--fx-side) 0%, transparent 38%),
+    var(--bg-elev);
+  border-right-color: var(--border);
+  box-shadow: inset -1px 0 0 var(--fx-edge);
+}
+
+:root[data-stadium="cesped"] {
+  --fx-stadium: repeating-linear-gradient(90deg, var(--fx-line) 0 64px, transparent 64px 128px);
+}
+:root[data-stadium="cancha"] {
+  --fx-stadium:
+    radial-gradient(circle at 50% 50%, var(--fx-line) 0 3px, transparent 4px),
+    radial-gradient(circle at 50% 50%, transparent 0 139px, var(--fx-line) 140px 141px, transparent 142px),
+    linear-gradient(90deg, transparent calc(50% - 0.5px), var(--fx-line) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+:root[data-stadium="reflectores"] {
+  --fx-stadium:
+    linear-gradient(118deg, var(--fx-line) 0%, transparent 34%),
+    linear-gradient(242deg, var(--fx-line) 0%, transparent 34%);
+}
+:root[data-stadium="gradas"] {
+  --fx-stadium: radial-gradient(circle, var(--fx-line) 1px, transparent 1.6px) 0 0 / 14px 14px;
+}
+
+/* Panel Apariencia */
+.club-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; }
+.club-chip, .stadium-chip {
+  display: flex; align-items: center; gap: 10px;
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 12px; font-size: 12.5px; font-weight: 500; text-align: left;
+  transition: border-color .15s, background-color .15s, color .15s;
+}
+.club-chip:hover, .stadium-chip:hover { background: var(--accent-soft); color: var(--text); }
+.club-chip.active, .stadium-chip.active {
+  background: var(--accent-soft); border-color: var(--accent-border);
+  color: var(--accent); font-weight: 600;
+}
+.club-swatch { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.18); }
+.club-swatch-custom { background: conic-gradient(#ff5470, #f5b74b, #3ddc84, #17e0e8, #7a5cff, #ff5470); }
+.club-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.custom-colors { display: flex; gap: 18px; margin-top: 14px; }
+.color-field { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-dim); }
+.color-field input[type="color"] {
+  width: 34px; height: 26px; padding: 0; cursor: pointer;
+  background: transparent; border: 1px solid var(--border); border-radius: 7px;
+}
+.stadium-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.stadium-chip { padding: 8px 16px; }
+
+
+/* ---------- Amigos ---------- */
+.nav-badge { margin-left: auto; min-width: 18px; padding: 1px 6px; border-radius: 20px; background: var(--accent); color: #04141a; font-size: 10.5px; font-weight: 800; text-align: center; }
+.nav-badge[hidden] { display: none; }
+#panel-amigos [hidden] { display: none !important; }
+.fr-profile { display: flex; align-items: center; gap: 14px; }
+.fr-profile-info { flex: 1; min-width: 0; }
+.fr-avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--bg-elev-3); object-fit: cover; flex-shrink: 0; }
+.fr-name { font-size: 15px; font-weight: 700; }
+.fr-code { font-size: 12.5px; color: var(--text-dim); margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+.fr-section-title { margin: 20px 32px 8px; font-size: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--text-dim); }
+.fr-row { display: flex; align-items: center; gap: 12px; margin: 0 32px 8px; padding: 10px 14px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 12px; }
+.fr-row .fr-avatar { width: 34px; height: 34px; }
+.fr-row-info { flex: 1; min-width: 0; }
+.fr-row-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-row-sub { font-size: 11.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-row-sub.in-room { color: var(--success); }
+.fr-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: var(--text-faint); }
+.fr-dot.online { background: var(--accent); }
+.fr-dot.in-room { background: var(--success); }
+.fr-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.fr-empty { margin: 0 32px 8px; }
+
+.fr-row-live { border-color: rgba(61, 220, 132, 0.4); background: linear-gradient(90deg, var(--success-soft), var(--bg-elev-2) 60%); }
+/* =====================================================================
+   Animación de arranque (splash) + entrada de la interfaz
+   ===================================================================== */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--bg, #06070a);
+  transition: opacity .5s ease, visibility .5s;
+}
+.splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash::before {
+  content: '';
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-soft, rgba(23, 224, 232, .12)), transparent 65%);
+  animation: splash-glow 1.6s ease-out both;
+}
+.splash-logo {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  animation: splash-pop .9s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+.splash-name {
+  position: relative;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text, #eef5fb);
+  animation: splash-rise .7s .25s ease both;
+}
+.splash-name b { color: var(--accent); }
+.splash-bar {
+  position: relative;
+  width: 160px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--border, #1e2430);
+  overflow: hidden;
+  animation: splash-rise .5s .4s ease both;
+}
+.splash-bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  animation: splash-load 1.4s .2s cubic-bezier(.3, .7, .2, 1) both;
+}
+@keyframes splash-pop  { from { opacity: 0; transform: scale(.6) rotate(-8deg); } to { opacity: 1; transform: none; } }
+@keyframes splash-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes splash-glow { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: scale(1); } }
+@keyframes splash-load { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Entrada del shell una vez que se va el splash */
+.app.intro .sidebar { animation: intro-side .55s cubic-bezier(.2, .8, .2, 1) both; }
+.app.intro .nav-btn { animation: intro-item .45s ease both; }
+.app.intro .nav-btn:nth-child(1) { animation-delay: .10s; }
+.app.intro .nav-btn:nth-child(2) { animation-delay: .15s; }
+.app.intro .nav-btn:nth-child(3) { animation-delay: .20s; }
+.app.intro .nav-btn:nth-child(4) { animation-delay: .25s; }
+.app.intro .nav-btn:nth-child(5) { animation-delay: .30s; }
+.app.intro .nav-btn:nth-child(6) { animation-delay: .35s; }
+.app.intro .nav-btn:nth-child(7) { animation-delay: .40s; }
+.app.intro .main { animation: intro-main .6s .1s ease both; }
+@keyframes intro-side { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@keyframes intro-item { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes intro-main { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* =====================================================================
+   País de las salas (bandera + badge)
+   ===================================================================== */
+.room-flag.has-flag { overflow: hidden; position: relative; padding: 0; }
+.room-flag .flag-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.room-flag .flag-img + .flag-code { display: none; }  /* si la imagen falla, queda el código de 2 letras */
+.chip-country { display: inline-flex; align-items: center; gap: 5px; color: var(--text); }
+.flag-img-sm { width: 15px; height: 11px; object-fit: cover; border-radius: 2px; display: block; }
+
+/* Botón de idioma */
+#lang-toggle { margin-top: 0; }
