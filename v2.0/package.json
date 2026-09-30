@@ -1,0 +1,67 @@
+{
+  "name": "vivet-client",
+  "version": "0.1.6",
+  "description": "Vivet Client - Cliente de escritorio no oficial para Haxball",
+  "main": "main.js",
+  "author": "Vivet",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "minify": "node fuente-legible/minificar.js",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "dist": "npm run clean && electron-builder --win --x64 --ia32"
+  },
+  "devDependencies": {
+    "clean-css": "^5.3.3",
+    "electron": "^38.0.0",
+    "electron-builder": "^25.1.8",
+    "terser": "^5.31.0"
+  },
+  "dependencies": {
+    "@xhayper/discord-rpc": "^1.2.1",
+    "electron-store": "^8.2.0"
+  },
+  "overrides": {
+    "@electron/rebuild": "3.6.1"
+  },
+  "build": {
+    "appId": "com.vivet.client",
+    "productName": "Vivet Client",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "renderer/index.html",
+      "renderer/chat-window.html",
+      "renderer/app.js",
+      "renderer/chat.js",
+      "renderer/config.js",
+      "renderer/style.css",
+      "renderer/game-preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "assets/logo.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vivet Client",
+      "artifactName": "Vivet-Client-Setup-${version}.${ext}"
+    }
+  }
+}
