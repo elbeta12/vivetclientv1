@@ -1,0 +1,58 @@
+{
+  "name": "vivet-client",
+  "version": "0.1.5",
+  "description": "Vivet Client - Cliente de escritorio no oficial para Haxball",
+  "main": "main.js",
+  "author": "Vivet",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "dist": "npm run clean && electron-builder --win --x64 --ia32"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "@xhayper/discord-rpc": "^1.2.1",
+    "electron-store": "^8.2.0"
+  },
+  "overrides": {
+    "@electron/rebuild": "3.6.1"
+  },
+  "build": {
+    "appId": "com.vivet.client",
+    "productName": "Vivet Client",
+    "asar": true,
+    "files": [
+      "main.js",
+      "optimizations-main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "assets/logo.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vivet Client",
+      "artifactName": "Vivet-Client-Setup-${version}.${ext}"
+    }
+  }
+}
