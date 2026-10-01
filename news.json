@@ -1,0 +1,23 @@
+{
+  "news": [
+    {
+      "id": "2026-10-01-grupos-y-equipos",
+      "date": "2026-10-01",
+      "title": "Grupos y equipos en el chat",
+      "tag": "Novedad",
+      "body": "Ahora podés crear grupos con tus amigos para organizar partidas o armar tu equipo.",
+      "items": [
+        "Creá un grupo desde Chats con el botón ＋ Grupo",
+        "Poné un tag de equipo, por ejemplo [VVT]",
+        "Invitá a todo el grupo a tu sala con un click"
+      ]
+    },
+    {
+      "id": "2026-10-01-apartado-actualizaciones",
+      "date": "2026-10-01",
+      "title": "Nuevo apartado de Actualizaciones",
+      "tag": "Aviso",
+      "body": "Acá vas a encontrar las noticias de cada actualización. Cuando haya algo nuevo, vas a ver un número al lado del botón."
+    }
+  ]
+}
