@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<title>Vivet Client</title>
+<!-- SEGURO anti-cuelgue: si por cualquier motivo app.js no llega a ejecutarse (fuentes
+     lentas, error de script...), esto saca la pantalla de carga igual a los 6 s. -->
+<script>
+  (function () {
+    function unstick() {
+      var s = document.getElementById('splash');
+      if (!s) return;
+      s.classList.add('hide');
+      var a = document.getElementById('app-root');
+      if (a) a.classList.add('intro');
+      setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 800);
+      setTimeout(function () { if (window.__vivetLoadGame) window.__vivetLoadGame(); }, 400);
+    }
+    // El juego (webview) se carga DESPUÉS de que la interfaz ya se ve, no junto con el arranque.
+    window.__vivetLoadGame = function () {
+      var v = document.getElementById('game-view');
+      if (v && !v.getAttribute('src')) v.setAttribute('src', v.getAttribute('data-src'));
+    };
+    setTimeout(window.__vivetLoadGame, 7000);
+    setTimeout(unstick, 6000);
+    window.addEventListener('error', function () { setTimeout(unstick, 3000); });
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- media=print + onload: la fuente ya NO bloquea la carga de la app si la red va lenta -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Animación de arranque (ver bootSplash al final de app.js) -->
+  <div id="splash" class="splash" data-i18n-skip>
+    <div class="splash-bg"></div>
+    <div class="splash-grid"></div>
+    <div class="splash-streaks"><i></i><i></i><i></i><i></i></div>
+    <div class="splash-center">
+      <span class="splash-ring r1"></span>
+      <span class="splash-ring r2"></span>
+      <span class="splash-ring r3"></span>
+      <img class="splash-logo" src="../assets/logo.png" alt="" />
+    </div>
+    <div class="splash-name">Vivet <b>Client</b></div>
+    <div class="splash-tag" id="splash-version">Vivet Client</div>
+    <div class="splash-bar"><i></i></div>
+    <div class="splash-status" id="splash-status">Iniciando Vivet…</div>
+  </div>
+
+  <div class="app" id="app-root">
+
+    <!-- El juego real de Haxball. Siempre está cargado (así la lista de
+         salas se puede leer en vivo), pero mientras no estás jugando queda
+         TAPADO por el sidebar + panel de al lado (ver style.css). -->
+    <div class="game-wrap" id="game-wrap">
+      <webview id="game-view"
+        data-src="https://www.haxball.com/play"
+        partition="persist:haxball"
+        webpreferences="backgroundThrottling=false"
+      ></webview>
+      <div id="create-hint" class="create-hint">Completá los datos de la sala y confirmá</div>
+      <button id="exit-create-btn" class="overlay-btn" title="Cancelar y volver a Vivet">
+        <span>← Volver a Vivet</span>
+      </button>
+      <button id="exit-replay-btn" class="overlay-btn" title="Cerrar el replay y volver a Vivet">
+        <span>← Salir del replay</span>
+      </button>
+      <button id="room-maps-btn" class="overlay-btn" title="Poner un mapa guardado en tu sala">
+        <span>Mapas guardados</span>
+      </button>
+      <div id="fps-badge" class="fps-badge">FPS: --</div>
+      <div id="room-name-badge" class="room-name-badge"></div>
+      <button id="copy-link-btn" class="overlay-btn" title="Copiar link de esta sala">
+        <span>Copiar link de la sala</span>
+      </button>
+      <!-- Tapa el webview mientras se termina de entrar a la sala, así no
+           se ve ni el parpadeo negro del webview asentándose ni la propia
+           pantalla de "conectando" nativa de Haxball. Ver showJoinOverlay
+           / waitOutJoinOverlay en app.js. -->
+      <div id="join-overlay" class="join-overlay">
+        <div class="join-spinner"></div>
+        <div class="join-overlay-text" id="join-overlay-text">Entrando a la sala…</div>
+      </div>
+    </div>
+
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../assets/logo.png" alt="Vivet" class="brand-logo" />
+        <span class="brand-name">Vivet <b>Client</b></span>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-panel="panel-explorar">Explorar salas</button>
+        <button class="nav-btn" data-panel="panel-crear">Crear sala</button>
+        <button class="nav-btn" data-panel="panel-amigos">Social <span id="fr-badge" class="nav-badge" hidden></span></button>
+        <button class="nav-btn" data-panel="panel-chats">Chats <span id="chat-badge" class="nav-badge ch-badge" hidden></span></button>
+        <button class="nav-btn" data-panel="panel-foro">Foro</button>
+        <button class="nav-btn" data-panel="panel-novedades">Novedades <span id="updates-badge" class="nav-badge" hidden></span></button>
+        <button class="nav-btn" data-panel="panel-competitivo">Competitivo</button>
+        <button class="nav-btn" data-panel="panel-replays">Replays</button>
+        <button class="nav-btn" data-panel="panel-mapas">Mapas</button>
+        <button class="nav-btn" data-panel="panel-rendimiento">Rendimiento</button>
+        <button class="nav-btn" data-panel="panel-apariencia">Apariencia</button>
+        <button class="nav-btn" data-panel="panel-cuenta">Auth</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div id="update-banner" class="update-banner" style="display:none;">
+          <span id="update-banner-text">Actualización disponible</span>
+          <button id="update-download-btn" class="primary-btn update-download-btn">Descargar actualización</button>
+          <span class="hint" style="text-align:center;">Se abre la página de descarga en tu navegador. Bajá el instalador y ejecutalo como siempre: no se instala solo.</span>
+        </div>
+        <button id="discord-quick-btn" class="ghost-btn theme-btn" title="Unirse al Discord">
+          <span>Discord</span>
+        </button>
+        <button id="theme-toggle" class="ghost-btn theme-btn" title="Cambiar tema">
+          <span id="theme-label">Oscuro</span>
+        </button>
+        <button id="lang-toggle" class="ghost-btn theme-btn" title="Idioma / Language" data-i18n-skip>
+          <span id="lang-toggle-label">Español</span>
+        </button>
+        <div class="app-version">Vivet Client · v0.1.6</div>
+      </div>
+    </aside>
+
+    <!-- ===================== MAIN ===================== -->
+    <main class="main">
+
+      <!-- Panel: explorar salas (buscador propio, no la página nativa) -->
+      <section id="panel-explorar" class="panel active panel-explorar">
+        <div class="hero">
+          <div class="hero-eyebrow">Directorio de partidas</div>
+          <h1 class="hero-title">Encontrá tu próxima <span class="accent-text">cancha</span>.</h1>
+          <p class="hero-sub">Buscá una sala por su nombre, o pegá el link de una sala para entrar directo.</p>
+
+          <div class="toolbar">
+            <div class="search-box">
+              <input id="search-input" type="text" placeholder="Nombre de la sala o link..." />
+            </div>
+            <select id="sort-select" class="sort-select" title="Ordenar por">
+              <option value="distance" selected>Más cerca</option>
+              <option value="players">Más jugadores</option>
+              <option value="name">Nombre (A-Z)</option>
+            </select>
+            <button id="refresh-btn" class="ghost-btn" title="Actualizar lista">Actualizar</button>
+          </div>
+
+          <div class="hero-stats">
+            <span id="stat-players">—</span> jugadores en salas públicas ahora mismo
+            <span id="last-updated" class="last-updated"></span>
+          </div>
+
+          <div class="pin-form">
+            <input id="pin-label-input" type="text" placeholder="Cómo querés llamarla (ej: Sala de mis amigos)" />
+            <input id="pin-match-input" type="text" placeholder="Parte del nombre de la sala, o pegá su link" />
+            <button id="pin-add-btn" class="ghost-btn">Fijar sala</button>
+          </div>
+        </div>
+
+        <div class="room-list" id="room-list">
+          <div class="room-list-skeleton">
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: crear sala -->
+      <section id="panel-crear" class="panel">
+        <div class="panel-header">
+          <h2>Crear sala</h2>
+          <p class="hint">
+            Tocá el botón y se abre la pantalla de Haxball para crear tu sala.
+            Ahí ponés el nombre, la cantidad de jugadores y confirmás.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Crear sala en Haxball</h3>
+          <div class="panel-toolbar" style="padding:0;">
+            <button id="create-room-btn" class="primary-btn">Crear sala</button>
+          </div>
+          <p class="hint" id="create-room-status" style="margin-top:10px;"></p>
+        </div>
+      </section>
+
+      <!-- Panel: social (nickname + amigos / perfil) -->
+      <section id="panel-amigos" class="panel">
+        <div class="panel-header">
+          <h2>Social</h2>
+          <p class="hint">Conectá tu Discord para tener perfil, sumar amigos con un código, ver en qué sala están y entrar con un click. Solo tus amigos ven dónde jugás, y podés ponerte invisible o bloquear a quien quieras.</p>
+        </div>
+        <div class="card" style="margin: 0 32px 20px;">
+          <h3>Tu nickname</h3>
+          <p>Es tu nombre en Haxball. Se pone solo al entrar a una sala y es el que ven tus amigos. Se usa desde la próxima sala que entres.</p>
+          <div class="create-room-form" style="grid-template-columns: 1fr auto;">
+            <label class="form-field">
+              <span>Nickname</span>
+              <input id="nickname-input" type="text" placeholder="Jugador1234" maxlength="25" />
+            </label>
+            <button id="nickname-save-btn" class="primary-btn" style="align-self:end;">Guardar</button>
+          </div>
+        </div>
+        <div class="card" id="avatar-card" style="margin: 0 32px 20px;">
+          <h3>Foto en el juego</h3>
+          <p>Elegí una foto y se ve dentro de tu círculo mientras jugás, como el color de la pelota. Se aplica al jugador con tu nickname y se ve desde la próxima sala que entres. Solo la ves vos: las fotos de los demás jugadores no se muestran.</p>
+          <div class="avatar-row">
+            <div id="avatar-preview" class="avatar-preview empty"></div>
+            <button id="avatar-pick-btn" class="primary-btn" type="button">Elegir foto</button>
+            <button id="avatar-remove-btn" class="ghost-btn secondary-action" type="button" hidden>Quitar</button>
+            <input id="avatar-file" type="file" accept="image/*" hidden />
+          </div>
+
+        </div>
+        <div id="fr-login" class="card" hidden>
+          <h3>Conectar con Discord</h3>
+          <p id="fr-login-text">Se abre tu navegador para confirmar que sos vos. Vivet solo ve tu nombre y tu foto de Discord.</p>
+          <button id="fr-login-btn" class="primary-btn discord-btn">Conectar con Discord</button>
+        </div>
+        <div id="fr-main" hidden>
+          <div class="card fr-profile">
+            <img id="fr-avatar" class="fr-avatar" alt="" />
+            <div class="fr-profile-info">
+              <div id="fr-name" class="fr-name"></div>
+              <div class="fr-code">Tu código: <code id="fr-code"></code> <button id="fr-copy-code" class="ghost-btn secondary-action">Copiar</button></div>
+            </div>
+            <button id="fr-logout-btn" class="ghost-btn secondary-action">Cerrar sesión</button>
+          </div>
+          <div class="card">
+            <h3>Privacidad</h3>
+            <label class="switch-row" style="margin-top:14px;"><span>Modo invisible: tus amigos te ven como desconectado</span><input type="checkbox" id="fr-invisible" /></label>
+          </div>
+          <div class="card">
+            <h3>Agregar amigo</h3>
+            <div class="create-room-form" style="grid-template-columns: 1fr auto;">
+              <label class="form-field"><span>Código de amigo o usuario de Discord</span><input id="fr-add-input" type="text" maxlength="40" placeholder="VV-XXXXXX" autocomplete="off" /></label>
+              <button id="fr-add-btn" class="primary-btn" style="align-self:end;">Enviar solicitud</button>
+            </div>
+          </div>
+          <div id="fr-lists"></div>
+        </div>
+        <p class="hint" id="fr-status" style="margin: 8px 32px 24px;"></p>
+      </section>
+
+      <!-- Panel: chats con amigos (chat.js; también hay una versión flotante sobre el juego) -->
+      <section id="panel-chats" class="panel">
+        <div class="chat-head-row">
+          <div class="panel-header">
+            <h2>Chats</h2>
+            <p class="hint">Hablá con tus amigos sin salir de Vivet. Mientras jugás, abrí la ventana de chats (queda encima del juego) con el botón "Chats" o con la tecla F8.</p>
+          </div>
+          <button id="chat-popout-btn" class="ghost-btn" type="button">Abrir en ventana</button>
+        </div>
+        <div id="chat-panel-root"></div>
+      </section>
+
+      <!-- Panel: foro (forum.js) -->
+      <section id="panel-foro" class="panel">
+        <div class="panel-header">
+          <h2>Foro</h2>
+          <p class="hint">Publicá texto, fotos y clips, y comentá lo de los demás. Necesitás tener tu Discord conectado en Social.</p>
+        </div>
+          <div id="forum-login-hint" class="card" hidden>
+            <h3>Conectá tu Discord para usar el foro</h3>
+            <p>Para ver y publicar necesitás tener tu cuenta vinculada. Andá a Social y tocá "Conectar con Discord".</p>
+          </div>
+          <div id="forum-main" hidden>
+            <div class="card forum-compose">
+              <h3>Nueva publicación</h3>
+              <textarea id="forum-text" maxlength="1000" rows="3" placeholder="Contá algo, mostrá tu jugada, buscá equipo…"></textarea>
+              <label class="form-field"><span>Link de un clip (YouTube, Medal, Streamable, Twitch, TikTok, Instagram, X o Discord)</span>
+                <input id="forum-clip" type="text" maxlength="300" placeholder="https://…" autocomplete="off" /></label>
+              <div id="forum-img-preview" class="forum-img-preview" hidden></div>
+              <div class="forum-compose-row">
+                <button id="forum-img-btn" class="ghost-btn" type="button">📷 Agregar foto</button>
+                <input id="forum-img-file" type="file" accept="image/*" hidden />
+                <span id="forum-count" class="hint">0/1000</span>
+                <button id="forum-post-btn" class="primary-btn" type="button">Publicar</button>
+              </div>
+            </div>
+            <div class="forum-bar">
+              <button id="forum-f-all" class="social-tab on" type="button">Todo</button>
+              <button id="forum-f-mine" class="social-tab" type="button">Mis publicaciones</button>
+              <button id="forum-refresh" class="ghost-btn secondary-action" type="button" style="margin-left:auto;">Actualizar</button>
+            </div>
+            <div id="forum-list"></div>
+            <div style="text-align:center;margin:8px 0 28px;"><button id="forum-more" class="ghost-btn" type="button" hidden>Cargar más</button></div>
+          </div>
+      </section>
+
+      <!-- Panel: novedades (se editan en updates.js) -->
+      <section id="panel-novedades" class="panel">
+        <div class="panel-header">
+          <h2>Novedades</h2>
+          <p class="hint">Lo nuevo de cada versión de Vivet Client.</p>
+        </div>
+        <div id="updates-list"></div>
+        <div style="height:24px;"></div>
+      </section>
+
+      <!-- Panel: competitivo (XP por tiempo jugado, rangos y top) -->
+      <section id="panel-competitivo" class="panel">
+        <div class="panel-header">
+          <h2>Competitivo</h2>
+          <p class="hint">Ganás XP por el tiempo que jugás en Vivet y subís de rango. Los mejores del top ganan recompensas exclusivas.</p>
+        </div>
+        <div class="card comp-me-card">
+          <div id="comp-rank-badge" class="comp-rank-badge"></div>
+          <div class="comp-me-info">
+            <div id="comp-rank-name" class="comp-rank-name">Cantera</div>
+            <div class="comp-me-stats"><span id="comp-xp">0 XP</span><span class="comp-dot">·</span><span id="comp-time">0 min</span> jugados</div>
+            <div class="comp-bar-bg"><div id="comp-bar" class="comp-bar"></div></div>
+            <div id="comp-next" class="hint"></div>
+          </div>
+        </div>
+        <p id="comp-login-note" class="hint" style="margin: -4px 32px 12px;" hidden>Conectá tu Discord en Social para entrar al top y guardar tu progreso en tu cuenta.</p>
+        <div class="fr-section-title">Rangos</div>
+        <div id="comp-ladder" class="comp-ladder"></div>
+        <div class="fr-section-title">Top de jugadores</div>
+        <div id="comp-lb"></div>
+        <div style="height:24px;"></div>
+      </section>
+
+      <!-- Panel: reproductor de replays -->
+      <section id="panel-replays" class="panel">
+        <div class="panel-header">
+          <h2>Replays</h2>
+          <p class="hint">
+            Mirá tus partidas grabadas (archivos .hbr2) dentro de Vivet. Elegí
+            un archivo o tocá uno de la lista: aparecen los recientes y los de
+            tu carpeta de Descargas. Si no se abre solo, usá el botón "Replays"
+            que Haxball muestra en su lista de salas.
+          </p>
+        </div>
+        <div class="panel-toolbar">
+          <button id="replay-open-btn" class="primary-btn">Abrir replay…</button>
+          <button id="replay-refresh-btn" class="ghost-btn">Actualizar lista</button>
+        </div>
+        <p class="hint" id="replay-status" style="margin: 0 32px 10px;"></p>
+        <div id="replay-list" class="replay-list"></div>
+      </section>
+
+      <!-- Panel: mapas de la comunidad -->
+      <section id="panel-mapas" class="panel">
+        <div class="panel-header">
+          <h2>Mapas</h2>
+          <p class="hint">Mapas hechos por la comunidad. Mirá cómo se ven antes de usarlos, guardalos en tu PC o subí los tuyos.</p>
+        </div>
+        <div class="maps-toolbar">
+          <div class="maps-tabs" role="tablist">
+            <button class="maps-tab active" data-tab="community" type="button">Comunidad</button>
+            <button class="maps-tab" data-tab="saved" type="button">Guardados</button>
+            <button class="maps-tab" data-tab="mine" type="button">Mis mapas</button>
+          </div>
+          <div class="search-box maps-search"><input id="maps-search" type="text" placeholder="Buscar mapa..." /></div>
+          <select id="maps-sort" class="sort-select" title="Ordenar por">
+            <option value="recent" selected>Más nuevos</option>
+            <option value="popular">Más usados</option>
+            <option value="name">Nombre (A-Z)</option>
+          </select>
+          <button id="maps-upload-btn" class="primary-btn" type="button">Subir mapa</button>
+        </div>
+        <p class="hint" id="maps-status" style="margin: 0 32px 10px;"></p>
+        <div id="maps-grid" class="maps-grid"></div>
+      </section>
+
+      <!-- Panel: rendimiento -->
+      <section id="panel-rendimiento" class="panel">
+        <div class="panel-header">
+          <h2>Rendimiento</h2>
+          <p class="hint">Ajustes para que el juego vaya más fluido. Si todo anda bien, no hace falta tocar nada.</p>
+        </div>
+
+        <div class="fr-section-title">Mientras jugás</div>
+        <div class="card">
+          <h3>Contador de FPS</h3>
+          <p>Muestra en pantalla cuántos cuadros por segundo da el juego. Más FPS = imagen más fluida.</p>
+          <label class="switch-row">
+            <span>Mostrar contador de FPS mientras jugás</span>
+            <input type="checkbox" id="fps-toggle" checked />
+          </label>
+        </div>
+        <div class="card">
+          <h3>Límite de FPS</h3>
+          <p>Es el tope de fluidez del juego. Un buen valor es el doble de los Hz de tu monitor (por ejemplo, 120 si tu monitor es de 60 Hz). Si la PC se pone pesada, bajalo.</p>
+          <div class="fps-limit-row">
+            <input type="range" id="fps-limit-input" min="30" max="800" step="10" value="800" />
+            <span id="fps-limit-value" class="fps-limit-value">800 FPS</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Calidad de render</h3>
+          <p>Qué tan nítida se dibuja la imagen del juego. Bajarla ayuda a que vaya más fluido en PCs modestas. No cambia el tamaño de la ventana.</p>
+          <div class="fps-limit-row">
+            <select id="render-scale-select" class="sort-select">
+              <option value="1">100% (nativa)</option>
+              <option value="0.75">75%</option>
+              <option value="0.5">50%</option>
+              <option value="0.35">35% (mínima)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fr-section-title">Pantalla</div>
+        <div class="card">
+          <h3>Resolución del juego</h3>
+          <p>Define con cuántos píxeles se dibuja el juego (por ejemplo 1280 × 1024) y se estira para llenar la ventana. Menos píxeles = más FPS en PCs modestas. Solo se aplica mientras jugás. "Restaurar" vuelve a la resolución nativa.</p>
+          <div class="res-presets" id="res-presets">
+            <button type="button" class="res-chip" data-w="640" data-h="480">640 × 480</button>
+            <button type="button" class="res-chip" data-w="800" data-h="600">800 × 600</button>
+            <button type="button" class="res-chip" data-w="1024" data-h="768">1024 × 768</button>
+            <button type="button" class="res-chip" data-w="1280" data-h="720">1280 × 720</button>
+            <button type="button" class="res-chip" data-w="1280" data-h="1024">1280 × 1024</button>
+            <button type="button" class="res-chip" data-w="1920" data-h="1080">1920 × 1080</button>
+          </div>
+          <div class="res-row">
+            <label class="res-field"><span>Ancho</span>
+              <div class="res-input"><input type="number" id="res-w" min="320" max="7680" step="1" placeholder="1920" /><em>px</em></div>
+            </label>
+            <span class="res-x">×</span>
+            <label class="res-field"><span>Alto</span>
+              <div class="res-input"><input type="number" id="res-h" min="320" max="7680" step="1" placeholder="1080" /><em>px</em></div>
+            </label>
+            <div class="res-actions">
+              <button id="res-apply-btn" class="primary-btn" type="button">Aplicar</button>
+              <button id="res-reset-btn" class="ghost-btn" type="button">Restaurar</button>
+            </div>
+          </div>
+          <label class="switch-row res-stretch-row">
+            <span>Estirar a pantalla completa<small>Si lo apagás, mantiene la proporción con barras negras.</small></span>
+            <input type="checkbox" id="res-stretch" checked />
+          </label>
+        </div>
+
+        <div class="fr-section-title">Avanzado (piden reiniciar Vivet)</div>
+        <div class="card">
+          <h3>Aceleración por GPU</h3>
+          <p>Elige cómo usa Vivet la placa de video de tu PC. Si el juego va con retraso o se siente pesado, probá otra opción.</p>
+          <div class="fps-limit-row">
+            <select id="gpu-mode-select" class="sort-select">
+              <option value="auto">Automático (puede congelarse en algunas PCs)</option>
+              <option value="compat">Compatibilidad (si se congela)</option>
+              <option value="performance">Alto rendimiento</option>
+              <option value="aggressive">Agresivo (puede romper captchas)</option>
+              <option value="off">Desactivada (solo CPU, más estable) — recomendado</option>
+            </select>
+          </div>
+          <p style="margin-top:12px;">Automático es lo más estable. Alto rendimiento usa la placa de video más potente, pero en notebooks puede causar retraso. Agresivo puede fallar con los captchas. Desactivada usa solo el procesador.</p>
+        </div>
+        <div class="card">
+          <h3>Impulso de FPS</h3>
+          <p>Normalmente el juego no puede pasar de los Hz de tu monitor. Esto sube ese techo unos 200 FPS por encima de tus Hz (por ejemplo, 60 Hz → hasta 260), sin quitar el tope del todo. Tu pantalla igual solo muestra sus Hz, pero puede bajar un poco el retraso de las teclas a cambio de usar más la PC.</p>
+          <label class="switch-row">
+            <span>Activar (usa más la PC)</span>
+            <input type="checkbox" id="fps-boost-toggle" />
+          </label>
+        </div>
+
+        <div class="fr-section-title">Interfaz de Vivet</div>
+        <div class="card">
+          <h3>Modo rendimiento del panel</h3>
+          <p>Deja la interfaz de Vivet más simple (sin animaciones, sombras ni fondo de club) para que gaste menos. No afecta al juego y no hace falta reiniciar.</p>
+          <label class="switch-row">
+            <span>Activar modo rendimiento</span>
+            <input type="checkbox" id="panel-perf-toggle" />
+          </label>
+        </div>
+
+        <div class="fr-section-title">Ayuda</div>
+        <div class="card">
+          <h3>Restablecer rendimiento</h3>
+          <p>Si el teclado va con retraso o algo se siente raro, esto vuelve todas las opciones de rendimiento a como vienen de fábrica y reinicia Vivet. Después probalas de a una para descubrir cuál te causa el problema.</p>
+          <button id="perf-reset-btn" class="ghost-btn" type="button">Restablecer y reiniciar</button>
+        </div>
+        <div class="card">
+          <h3>Sobre Vivet Client</h3>
+          <p>Cliente no oficial para Haxball. No tiene relación con Haxball ni con sus creadores: usa el juego oficial con una interfaz propia.</p>
+        </div>
+      </section>
+      <!-- Panel: apariencia (fondo del cliente) -->
+      <section id="panel-apariencia" class="panel">
+        <div class="panel-header">
+          <h2>Apariencia</h2>
+          <p class="hint">Poné el fondo de Vivet con los colores de tu club y una textura de estadio. Es solo decoración: no afecta al juego.</p>
+        </div>
+        <div class="fr-section-title">Transmisión</div>
+        <div class="card">
+          <h3>Modo streamer</h3>
+          <p>Difumina tu código de amigo, usuario de Discord, nickname, amigos y Auth; oculta el nombre y el link de la sala; y deja el Discord Rich Presence genérico, sin datos de la sala. Atajo: Ctrl + Shift + S.</p>
+          <label class="switch-row">
+            <span>Activar modo streamer</span>
+            <input type="checkbox" id="streamer-toggle" />
+          </label>
+        </div>
+
+        <div class="card">
+          <h3>Transmisión fluida (OBS / TikTok)</h3>
+          <p>Al transmitir, la captura agrega delay y el juego se ve con tirones. Esto manda solo el comando /extrapolation apenas entrás a cada sala (no lo ve nadie en el chat) y sube la calidad con la que se dibuja el juego. Funciona mejor si capturás la ventana de Vivet en pantalla completa.</p>
+          <label class="switch-row">
+            <span>Activar transmisión fluida</span>
+            <input type="checkbox" id="stream-boost-toggle" />
+          </label>
+          <label class="form-field">
+            <span>Extrapolación (ms, entre -200 y 200)</span>
+            <input type="number" id="stream-ex" min="-200" max="200" step="1" value="30" />
+          </label>
+          <label class="form-field">
+            <span>Calidad de imagen</span>
+            <select id="stream-q">
+              <option value="normal">Normal (la de tu ventana)</option>
+              <option value="high">Alta (1920 × 1080)</option>
+              <option value="ultra">Muy alta (2560 × 1440)</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="card">
+          <h3>Colores del club</h3>
+          <div id="club-grid" class="club-grid"></div>
+          <div class="custom-colors">
+            <label class="color-field"><span>Principal</span><input type="color" id="bg-custom-1" value="#17e0e8" /></label>
+            <label class="color-field"><span>Secundario</span><input type="color" id="bg-custom-2" value="#0aa8c9" /></label>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Botones</h3>
+          <p>Elegí el color de los botones y los detalles de Vivet.</p>
+          <div class="btn-color-row">
+            <div id="btn-swatches" class="btn-color-row"></div>
+            <label class="color-field"><span>Personalizado</span><input type="color" id="btn-color" value="#17e0e8" /></label>
+            <button id="btn-color-reset" class="ghost-btn" type="button">Color original</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Estadio</h3>
+          <p>Una textura muy suave sobre el fondo.</p>
+          <div class="stadium-grid">
+            <button class="stadium-chip" data-stadium="none" type="button">Ninguno</button>
+            <button class="stadium-chip" data-stadium="cesped" type="button">Césped</button>
+            <button class="stadium-chip" data-stadium="cancha" type="button">Cancha</button>
+            <button class="stadium-chip" data-stadium="reflectores" type="button">Reflectores</button>
+            <button class="stadium-chip" data-stadium="gradas" type="button">Gradas</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Intensidad</h3>
+          <p>Qué tanto se nota el color del club en el fondo.</p>
+          <div class="fps-limit-row">
+            <input type="range" id="bg-strength" min="0" max="100" step="5" value="40" />
+            <span id="bg-strength-value" class="fps-limit-value">40%</span>
+          </div>
+        </div>
+        <div class="panel-toolbar">
+          <button id="bg-reset-btn" class="ghost-btn">Restablecer</button>
+        </div>
+      </section>
+
+      <!-- Panel: Auth (auth local de Haxball) -->
+      <section id="panel-cuenta" class="panel">
+        <div class="panel-header">
+          <h2>Auth</h2>
+          <p class="hint">
+            Tu Auth es un código que Haxball te da y que los admins usan para
+            reconocerte en cada partida. Se guarda solo en esta PC. Si ya
+            jugabas en el navegador, podés traer tu mismo Auth con tu clave
+            (más abajo).
+          </p>
+        </div>
+
+        <div class="card" style="margin: 0 32px 20px;">
+          <h3>Mi país</h3>
+          <p>Cambia la bandera que Haxball muestra de vos en las salas. Es solo estético: no cambia tu conexión ni tu ping real. "Automático" vuelve a la detección normal.</p>
+          <div class="create-room-form" style="grid-template-columns: 1fr auto;">
+            <label class="form-field">
+              <span>País</span>
+              <select id="country-select" class="sort-select" style="width:100%;"></select>
+            </label>
+            <button id="country-apply-btn" class="primary-btn" style="align-self:end;">Aplicar</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin: 0 32px 20px;">
+          <h3>Traer mi Auth del navegador</h3>
+          <p>Entrá a haxball.com/playerauth en el navegador donde ya jugabas, copiá tu clave privada (empieza con idkey.) y pegala acá. Así vas a tener el mismo Auth en Vivet. Usá solo tu propia clave y no se la des a nadie: con ella pueden hacerse pasar por vos. Antes de reemplazarla, Vivet guarda un respaldo de la clave actual.</p>
+          <div class="create-room-form" style="grid-template-columns: 1fr auto auto;">
+            <label class="form-field">
+              <span>Clave privada</span>
+              <input id="auth-key-input" type="password" placeholder="idkey.…" autocomplete="off" spellcheck="false" />
+            </label>
+            <button id="auth-apply-btn" class="primary-btn" style="align-self:end;">Importar</button>
+            <button id="auth-restore-btn" class="ghost-btn" style="align-self:end; display:none;" title="Volver a la clave que tenías antes del último cambio">Restaurar anterior</button>
+          </div>
+        </div>
+
+        <div class="panel-toolbar">
+          <button id="auth-refresh-btn" class="primary-btn">Ver mi Auth</button>
+        </div>
+        <div id="auth-guesses" class="auth-guesses" style="margin: 0 32px 16px;"></div>
+      </section>
+
+    </main>
+
+    <!-- Detalle de un mapa -->
+    <div id="map-detail" class="map-modal" hidden>
+      <div class="map-modal-box" role="dialog" aria-modal="true" aria-labelledby="map-detail-name">
+        <div class="map-modal-head">
+          <div>
+            <h3 id="map-detail-name"></h3>
+            <p class="hint" id="map-detail-meta"></p>
+          </div>
+          <button class="ghost-btn secondary-action" data-close type="button">Cerrar</button>
+        </div>
+        <canvas id="map-detail-canvas" class="map-canvas" width="960" height="540"></canvas>
+        <label class="switch-row"><span>Mostrar paredes invisibles</span><input type="checkbox" id="map-detail-invisible" /></label>
+        <p class="hint" id="map-detail-desc"></p>
+        <div class="map-actions">
+          <button id="map-use-btn" class="primary-btn" type="button">Usar en mi sala</button>
+          <button id="map-save-btn" class="ghost-btn" type="button">Guardar</button>
+          <button id="map-download-btn" class="ghost-btn" type="button">Descargar .hbs</button>
+          <button id="map-report-btn" class="ghost-btn secondary-action" type="button">Reportar</button>
+          <button id="map-delete-btn" class="ghost-btn secondary-action" type="button" hidden>Eliminar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subir un mapa -->
+    <div id="map-upload" class="map-modal" hidden>
+      <div class="map-modal-box" role="dialog" aria-modal="true" aria-labelledby="map-upload-title">
+        <div class="map-modal-head">
+          <h3 id="map-upload-title">Subir mapa</h3>
+          <button class="ghost-btn secondary-action" data-close type="button">Cerrar</button>
+        </div>
+        <label id="map-drop" class="map-drop">
+          <input id="map-upload-file" type="file" accept=".hbs,.json,application/json" hidden />
+          <span>Arrastrá tu archivo .hbs acá o tocá para elegirlo</span>
+        </label>
+        <p class="hint map-error" id="map-upload-error"></p>
+        <div id="map-upload-form" hidden>
+          <canvas id="map-upload-canvas" class="map-canvas" width="960" height="540"></canvas>
+          <div class="create-room-form" style="grid-template-columns: 1fr;">
+            <label class="form-field"><span>Nombre</span><input id="map-upload-name" type="text" maxlength="60" /></label>
+            <label class="form-field"><span>Descripción (opcional)</span><input id="map-upload-desc" type="text" maxlength="200" placeholder="Para qué modo sirve, cuántos jugadores, etc." /></label>
+          </div>
+        </div>
+        <div class="map-actions">
+          <button id="map-upload-publish" class="primary-btn" type="button" disabled>Publicar en la comunidad</button>
+          <button id="map-upload-local" class="ghost-btn" type="button" disabled>Guardar solo en mi PC</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mapas guardados: elegir uno para cargarlo en tu sala -->
+    <div id="room-maps-modal" class="map-modal" hidden>
+      <div class="map-modal-box" role="dialog" aria-modal="true" aria-labelledby="room-maps-title">
+        <div class="map-modal-head">
+          <div>
+            <h3 id="room-maps-title">Mapas guardados</h3>
+            <p class="hint">Elegí uno y se carga directo en tu sala, sin descargarlo. Hay que ser admin y tener el partido parado.</p>
+          </div>
+          <button class="ghost-btn secondary-action" data-close type="button">Cerrar</button>
+        </div>
+        <div class="maps-tabs rm-tabs">
+          <button class="rm-tab active" data-rtab="saved" type="button">Guardados</button>
+          <button class="rm-tab" data-rtab="community" type="button">Comunidad</button>
+          <button class="rm-tab" data-rtab="mine" type="button">Míos</button>
+        </div>
+        <div class="search-box"><input id="room-maps-search" type="text" placeholder="Buscar mapa..." /></div>
+        <div id="room-maps-grid" class="maps-grid room-maps-grid"></div>
+      </div>
+    </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script src="chat.js"></script>
+  <script src="forum.js"></script>
+  <script src="updates.js"></script>
+</body>
+</html>
