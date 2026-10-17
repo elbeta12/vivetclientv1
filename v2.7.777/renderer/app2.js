@@ -1065,6 +1065,32 @@ try {
   const VIVET_UPDATES = [
 
     {
+      version: '2.7.0',
+      date: '2026-10-16',
+      title: 'Animaciones de gol y más FPS',
+      changes: [
+        '[nuevo] Animaciones de gol variadas en la Tienda, a 1000 Vcoins cada una.',
+        '[mejora] Mucho mejor rendimiento: se corrigió el problema de FPS muy bajos.',
+      ],
+    },
+
+    {
+      version: '2.6.0',
+      date: '2026-10-15',
+      title: 'Repetición de gol y cosméticos de temporada',
+      changes: [
+        '[nuevo] Repetición de gol.',
+        '[nuevo] Cosméticos de temporada en la Tienda: temáticos y disponibles solo en una época concreta (por ejemplo, los de Navidad solo en Navidad).',
+        '[nuevo] Opción para quitar la animación de gol desde los ajustes.',
+        '[mejora] Animación de entrada mejorada al abrir el cliente.',
+        '[mejora] El cliente de escritorio (ND) va más fluido: se redujeron los lagazos.',
+        '[mejora] Al abrir la app por primera vez se borra la configuración antigua, para corregir el retraso al presionar teclas que tenían algunos jugadores.',
+        '[fix] La animación de gol ya no aparece sin que haya gol.',
+        '[fix] La repetición de gol ahora sigue al balón y la jugada se ve bien.',
+      ],
+    },
+
+    {
       version: '2.5.0',
       date: '2026-10-13',
       title: 'Workshop, clips, goles y mucho más rendimiento',
