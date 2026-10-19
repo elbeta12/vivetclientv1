@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<title>Vivet Chats</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="style.css" />
+<script>
+  // Personalización: la ventana de chats lee lo que el cliente principal guardó (mismo localStorage)
+  // y se actualiza sola cuando cambiás colores, tema claro/oscuro, fuente, esquinas, etc.
+  (function () {
+    var ATTRS = ['data-stadium','data-base','data-font','data-radius','data-density','data-cards','data-sidebar','data-hero','data-zoomed','data-btnshape'];
+    var FONTS = { poppins:'Poppins:wght@400;500;600;700;800', montserrat:'Montserrat:wght@400;500;600;700;800', nunito:'Nunito:wght@400;500;600;700;800',
+      quicksand:'Quicksand:wght@400;500;600;700', fredoka:'Fredoka:wght@400;500;600;700', rajdhani:'Rajdhani:wght@400;500;600;700',
+      orbitron:'Orbitron:wght@400;500;600;700;800', oswald:'Oswald:wght@400;500;600;700', bebas:'Bebas+Neue',
+      playfair:'Playfair+Display:wght@400;500;600;700;800', jetbrains:'JetBrains+Mono:wght@400;500;600;700;800', pixel:'Press+Start+2P' };
+    var applied = [];
+    function apply() {
+      try {
+        var r = document.documentElement;
+        var m = localStorage.getItem('vivet_boot_mode');
+        if (m === 'dark' || m === 'light') r.setAttribute('data-theme', m);
+        var b = JSON.parse(localStorage.getItem('vivet_boot_theme') || 'null');
+        applied.forEach(function (k) { r.style.removeProperty(k); });
+        applied = [];
+        ATTRS.forEach(function (a) { r.removeAttribute(a); });
+        if (!b) return;
+        if (b.vars) for (var k in b.vars) { r.style.setProperty(k, b.vars[k]); applied.push(k); }
+        if (b.attrs) for (var a in b.attrs) if (ATTRS.indexOf(a) >= 0) r.setAttribute(a, b.attrs[a]);
+        var f = b.attrs && b.attrs['data-font'];
+        if (f && FONTS[f] && !document.getElementById('vv-font-' + f)) {
+          var l = document.createElement('link');
+          l.id = 'vv-font-' + f; l.rel = 'stylesheet';
+          l.href = 'https://fonts.googleapis.com/css2?family=' + FONTS[f] + '&display=swap';
+          document.head.appendChild(l);
+        }
+      } catch (e) {}
+    }
+    apply();
+    window.addEventListener('storage', function (e) {
+      if (e.key === 'vivet_boot_theme' || e.key === 'vivet_boot_mode') apply();
+    });
+  })();
+</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg-elev-2); }
+  #chat-window-root { height: 100vh; }
+  #cw-toasts { position: fixed; left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 10; pointer-events: none; }
+  .cw-toast { padding: 9px 12px; border-radius: 10px; font-size: 12.5px; background: var(--bg-elev); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .cw-toast.ok { border-color: var(--accent-border); }
+</style>
+</head>
+<body>
+  <div id="chat-window-root"></div>
+  <div id="cw-toasts"></div>
+  <script src="config.js"></script>
+  <script src="chat.js"></script>
+</body>
+</html>
